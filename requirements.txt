@@ -4,4 +4,4 @@ numpy
 matplotlib
 plotly
 python-dotenv
-ibm-watsonx-ai
+groq
