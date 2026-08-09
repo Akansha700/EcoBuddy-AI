@@ -1,15 +1,19 @@
 import streamlit as st
 import os
-import sqlite3
-import pandas as pd
 from dotenv import load_dotenv
+from groq import Groq
 
-from ibm_watsonx_ai.credentials import Credentials
-from ibm_watsonx_ai.foundation_models import ModelInference
+# ============================================================
+# LOAD ENVIRONMENT VARIABLES
+# ============================================================
 
-# =====================================================
+load_dotenv()
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+# ============================================================
 # PAGE CONFIG
-# =====================================================
+# ============================================================
 
 st.set_page_config(
     page_title="EcoBuddy AI Chatbot",
@@ -17,411 +21,210 @@ st.set_page_config(
     layout="wide"
 )
 
-# =====================================================
-# LOAD ENV VARIABLES
-# =====================================================
+# ============================================================
+# CHECK API KEY
+# ============================================================
 
-load_dotenv()
+if not GROQ_API_KEY:
+    st.error("❌ GROQ_API_KEY is missing.")
+    st.info(
+        "Create a .env file in the main EcoBuddy project folder "
+        "and add: GROQ_API_KEY=your_api_key"
+    )
+    st.stop()
 
-API_KEY = os.getenv("IBM_API_KEY")
-PROJECT_ID = os.getenv("IBM_PROJECT_ID")
-URL = os.getenv("IBM_URL")
-
-# =====================================================
-# IBM CREDENTIALS
-# =====================================================
-
-credentials = Credentials(
-    url=URL,
-    api_key=API_KEY
-)
-
-parameters = {
-    "decoding_method": "greedy",
-    "temperature": 0.4,
-    "max_new_tokens": 700,
-    "min_new_tokens": 80,
-    "repetition_penalty": 1.05
-}
-
-model = ModelInference(
-    model_id="meta-llama/llama-3-3-70b-instruct",
-    credentials=credentials,
-    project_id=PROJECT_ID,
-    params=parameters
-)
-
-# =====================================================
-# READ DATABASE
-# =====================================================
+# ============================================================
+# GROQ CLIENT
+# ============================================================
 
 try:
+    client = Groq(api_key=GROQ_API_KEY)
+except Exception as e:
+    st.error(f"❌ Could not initialize Groq: {e}")
+    st.stop()
 
-    conn = sqlite3.connect("database/ecobuddy.db")
+# ============================================================
+# ECOBUDDY SYSTEM PROMPT
+# ============================================================
 
-    carbon_df = pd.read_sql_query(
-        "SELECT * FROM carbon_data ORDER BY id DESC LIMIT 1",
-        conn
-    )
+SYSTEM_PROMPT = """
+You are EcoBuddy AI, an intelligent and friendly environmental
+assistant.
 
-    water_df = pd.read_sql_query(
-        "SELECT * FROM water_data ORDER BY id DESC LIMIT 1",
-        conn
-    )
+Your main areas of expertise are:
 
-    energy_df = pd.read_sql_query(
-        "SELECT * FROM energy_data ORDER BY id DESC LIMIT 1",
-        conn
-    )
+1. Waste management
+2. Waste segregation
+3. Recycling
+4. Composting
+5. Plastic pollution
+6. E-waste
+7. Sustainable living
+8. Climate change
+9. Carbon footprint
+10. Renewable energy
+11. Water conservation
+12. Energy conservation
+13. Environmental awareness
 
-    conn.close()
+You can also answer general questions from the user.
 
-except:
+Rules:
 
-    carbon_df = pd.DataFrame()
+- Give accurate and understandable answers.
+- Explain technical concepts in simple language when appropriate.
+- For environmental questions, provide practical real-world suggestions.
+- If the user asks a general question, answer it normally.
+- Do not pretend to have information that you do not have.
+- Do not claim that an action was performed if it was not.
+- Be concise but useful.
+- Use bullet points when they improve readability.
+- Maintain a friendly and educational personality.
+"""
 
-    water_df = pd.DataFrame()
+# ============================================================
+# SESSION STATE
+# ============================================================
 
-    energy_df = pd.DataFrame()
+if "messages" not in st.session_state:
+    st.session_state.messages = [
+        {
+            "role": "system",
+            "content": SYSTEM_PROMPT
+        }
+    ]
 
-# =====================================================
-# LATEST VALUES
-# =====================================================
-
-carbon = (
-    carbon_df["emission"].iloc[0]
-    if not carbon_df.empty
-    else 0
-)
-
-water = (
-    water_df["daily"].iloc[0]
-    if not water_df.empty
-    else 0
-)
-
-energy = (
-    energy_df["units"].iloc[0]
-    if not energy_df.empty
-    else 0
-)
-
-# =====================================================
-# ECO SCORE
-# =====================================================
-
-eco_score = max(
-    0,
-    min(
-        100,
-        100 - (carbon / 5)
-    )
-)
-
-# =====================================================
-# ECO LEVEL
-# =====================================================
-
-def eco_level(score):
-
-    if score >= 90:
-        return "🌍 Planet Hero"
-
-    elif score >= 75:
-        return "🌳 Green Champion"
-
-    elif score >= 60:
-        return "🌿 Eco Friendly"
-
-    else:
-        return "🌱 Beginner"
-
-level = eco_level(eco_score)
-
-# =====================================================
-# TITLE
-# =====================================================
+# ============================================================
+# HEADER
+# ============================================================
 
 st.title("🤖 EcoBuddy AI")
+st.subheader("Your Intelligent Environmental Assistant")
 
-st.caption(
-    "Powered by IBM watsonx.ai"
+st.write(
+    "Ask me about waste management, recycling, sustainability, "
+    "carbon footprint, climate change, or even general questions!"
 )
 
-# =====================================================
+# ============================================================
 # SIDEBAR
-# =====================================================
+# ============================================================
 
 with st.sidebar:
 
-    st.header("🌱 EcoBuddy AI")
+    st.header("🌱 EcoBuddy")
 
-    st.success(level)
-
-    st.metric(
-        "🌍 Carbon",
-        f"{carbon:.2f} kg"
-    )
-
-    st.metric(
-        "💧 Water",
-        f"{water:.0f} L/day"
-    )
-
-    st.metric(
-        "⚡ Energy",
-        f"{energy:.0f} kWh"
-    )
-
-    st.metric(
-        "🌱 Eco Score",
-        f"{eco_score:.0f}/100"
+    st.write(
+        "EcoBuddy AI helps you learn about environmental issues "
+        "and sustainable living."
     )
 
     st.divider()
 
-    st.info("""
-Ask anything about
+    st.subheader("💡 Try asking")
 
-🌍 Climate Change
+    st.write("♻️ How should I segregate waste?")
+    st.write("🌱 What is composting?")
+    st.write("🌍 How can I reduce my carbon footprint?")
+    st.write("🔋 How does solar energy work?")
+    st.write("🗑️ What goes into a dry waste bin?")
+    st.write("💻 How should I dispose of e-waste?")
 
-♻ Recycling
+    st.divider()
 
-💧 Water Conservation
+    if st.button("🗑️ Clear Chat", use_container_width=True):
 
-⚡ Energy Saving
-
-🚗 Carbon Footprint
-
-🌱 Sustainable Living
-
-📖 SDGs
-""")
-
-    if st.button("🗑 Clear Chat"):
-
-        st.session_state.messages = []
+        st.session_state.messages = [
+            {
+                "role": "system",
+                "content": SYSTEM_PROMPT
+            }
+        ]
 
         st.rerun()
 
-# =====================================================
-# CHAT HISTORY
-# =====================================================
+# ============================================================
+# DISPLAY CHAT HISTORY
+# ============================================================
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-# Display previous messages
 for message in st.session_state.messages:
+
+    if message["role"] == "system":
+        continue
 
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# =====================================================
+# ============================================================
 # CHAT INPUT
-# =====================================================
+# ============================================================
 
-prompt = st.chat_input(
-    "Ask EcoBuddy AI anything..."
+user_input = st.chat_input(
+    "Ask EcoBuddy anything..."
 )
 
-if prompt:
+# ============================================================
+# PROCESS USER QUESTION
+# ============================================================
 
-    # ---------------- USER MESSAGE ---------------- #
+if user_input:
 
+    # Add user message
     st.session_state.messages.append(
         {
             "role": "user",
-            "content": prompt
+            "content": user_input
         }
     )
 
+    # Display user message
     with st.chat_message("user"):
-        st.markdown(prompt)
+        st.markdown(user_input)
 
-    # ---------------- AI RESPONSE ---------------- #
-
+    # Generate AI response
     with st.chat_message("assistant"):
 
-        with st.spinner("🌱 EcoBuddy is analyzing your sustainability data..."):
+        response_placeholder = st.empty()
 
-            system_prompt = f"""
-You are EcoBuddy AI.
+        try:
 
-You are an intelligent Sustainability Assistant.
+            response = client.chat.completions.create(
 
-You have access to the user's latest sustainability report.
+                model="llama-3.3-70b-versatile",
 
--------------------------------------
+                messages=st.session_state.messages,
 
-LATEST USER DATA
+                temperature=0.7,
 
-Carbon Footprint:
-{carbon:.2f} kg CO₂
+                max_tokens=1024,
 
-Daily Water Usage:
-{water:.0f} Litres
+                top_p=0.9
+            )
 
-Monthly Energy Usage:
-{energy:.2f} kWh
+            assistant_response = response.choices[0].message.content
 
-Eco Score:
-{eco_score:.0f}/100
+            response_placeholder.markdown(
+                assistant_response
+            )
 
-Eco Level:
-{level}
+            # Save response
+            st.session_state.messages.append(
+                {
+                    "role": "assistant",
+                    "content": assistant_response
+                }
+            )
 
--------------------------------------
+        except Exception as e:
 
-Instructions:
+            error_message = f"""
+❌ **Unable to generate a response.**
 
-1. Read the user's sustainability data.
-2. Personalize every answer.
-3. Mention their latest carbon, water and energy values whenever relevant.
-4. If the user asks for improvement, give at least five personalized recommendations.
-5. Explain concepts in simple language.
-6. Use headings.
-7. Use bullet points.
-8. Never stop mid-sentence.
-9. End every answer with an encouraging eco-friendly tip.
+Error:
 
-User Question:
+`{str(e)}`
 
-{prompt}
+Please check your Groq API key and internet connection.
 """
 
-            try:
-
-                response = model.generate_text(
-                    prompt=system_prompt
-                )
-
-                st.markdown(response)
-
-                st.session_state.messages.append(
-                    {
-                        "role": "assistant",
-                        "content": response
-                    }
-                )
-
-            except Exception as e:
-
-                st.error(
-                    f"IBM AI Error:\n\n{e}"
-                )        
-
-# =====================================================
-# AI DASHBOARD
-# =====================================================
-
-st.divider()
-
-st.header("🤖 AI Sustainability Dashboard")
-
-c1, c2, c3, c4 = st.columns(4)
-
-with c1:
-    st.metric("🌍 Carbon", f"{carbon:.2f} kg")
-
-with c2:
-    st.metric("💧 Water", f"{water:.0f} L/day")
-
-with c3:
-    st.metric("⚡ Energy", f"{energy:.0f} kWh")
-
-with c4:
-    st.metric("🌱 Eco Score", f"{eco_score:.0f}/100")
-
-st.progress(eco_score / 100)
-
-st.success(f"Current Eco Level: {level}")
-
-# ---------------- AI Analysis ---------------- #
-
-analysis = []
-
-if carbon > 200:
-    analysis.append(
-        "🔴 Your carbon footprint is above the recommended level."
-    )
-else:
-    analysis.append(
-        "🟢 Your carbon footprint is within a healthy range."
-    )
-
-if water > 600:
-    analysis.append(
-        "💧 Water consumption is relatively high."
-    )
-else:
-    analysis.append(
-        "💧 Water consumption is efficient."
-    )
-
-if energy > 250:
-    analysis.append(
-        "⚡ Electricity usage can be reduced further."
-    )
-else:
-    analysis.append(
-        "⚡ Energy usage is efficient."
-    )
-
-st.subheader("📋 AI Analysis")
-
-for item in analysis:
-    st.info(item)
-
-# ---------------- Personalized Recommendations ---------------- #
-
-st.subheader("🌱 AI Recommendations")
-
-recommendations = []
-
-if carbon > 200:
-    recommendations.extend([
-        "🚶 Walk or cycle for short distances.",
-        "🚌 Use public transport at least twice a week.",
-        "💡 Replace old bulbs with LED lights."
-    ])
-
-if water > 600:
-    recommendations.extend([
-        "🚿 Reduce shower time.",
-        "🚰 Fix leaking taps immediately.",
-        "🌧 Install rainwater harvesting."
-    ])
-
-if energy > 250:
-    recommendations.extend([
-        "🔌 Turn off appliances when not in use.",
-        "🌞 Use natural daylight whenever possible.",
-        "⭐ Buy 5-star rated appliances."
-    ])
-
-if not recommendations:
-    recommendations.extend([
-        "🌍 Excellent! Continue your sustainable lifestyle.",
-        "🌳 Plant a tree every year.",
-        "♻ Continue segregating waste properly."
-    ])
-
-for rec in recommendations:
-    st.success(rec)
-
-# ---------------- Overall Rating ---------------- #
-
-st.subheader("🏆 Sustainability Rating")
-
-if eco_score >= 90:
-    st.success("🌍 Planet Hero")
-
-elif eco_score >= 75:
-    st.success("🌳 Green Champion")
-
-elif eco_score >= 60:
-    st.warning("🌿 Eco Friendly")
-
-else:
-    st.error("🌱 Beginner")                
+            response_placeholder.markdown(error_message)        
