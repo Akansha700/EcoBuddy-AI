@@ -6,3 +6,5 @@ plotly
 python-dotenv
 groq
 reportlab
+joblib
+scikit-learn

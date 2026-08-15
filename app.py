@@ -1,76 +1,84 @@
 import streamlit as st
 
+# -----------------------------
+# PAGE CONFIG
+# -----------------------------
 st.set_page_config(
     page_title="EcoBuddy AI",
-    page_icon="🌍",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    page_icon="🌱",
+    layout="wide"
 )
 
-# -----------------------
-# Custom CSS
-# -----------------------
+# -----------------------------
+# NAVIGATION
+# -----------------------------
+pages = {
+    "🏠 Main": [
+        st.Page(
+            "app_home.py",
+            title="Home",
+            icon="🏠"
+        ),
+        st.Page(
+            "pages/about.py",
+            title="About EcoBuddy",
+            icon="ℹ️"
+        ),
+    ],
 
-st.markdown("""
-<style>
+    "⚡ Energy": [
+        st.Page(
+            "pages/energy_predictor.py",
+            title="Energy Predictor",
+            icon="⚡"
+        ),
+        st.Page(
+            "pages/ai_advisor.py",
+            title="AI Energy Advisor",
+            icon="🤖"
+        ),
+        st.Page(
+            "pages/energy_analytics.py",
+            title="Energy Analytics",
+            icon="📊"
+        ),
+    ],
 
-.main-title{
-    text-align:center;
-    font-size:55px;
-    color:#2E8B57;
-    font-weight:bold;
+    "🌱 Sustainability": [
+        st.Page(
+            "pages/carbon_calculator.py",
+            title="Carbon Footprint",
+            icon="🌍"
+        ),
+        st.Page(
+            "pages/waste_assistant.py",
+            title="Waste Assistant",
+            icon="♻️"
+        ),
+        st.Page(
+            "pages/water_advisor.py",
+            title="Water Advisor",
+            icon="💧"
+        ),
+        st.Page(
+            "pages/eco_products.py",
+            title="Eco Products",
+            icon="🛍️"
+        ),
+    ],
+
+    "🤖 AI Assistant": [
+        st.Page(
+            "pages/chatbot.py",
+            title="EcoBuddy Chatbot",
+            icon="💬"
+        ),
+    ],
 }
 
-.sub-title{
-    text-align:center;
-    font-size:24px;
-    color:#555;
-}
+# -----------------------------
+# RUN NAVIGATION
+# -----------------------------
+pg = st.navigation(pages)
 
-.feature-card{
-    background:#F0FFF4;
-    padding:18px;
-    border-radius:15px;
-    margin-bottom:15px;
-    border-left:6px solid #2E8B57;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-# -----------------------
-
-st.markdown(
-    "<h1 class='main-title'>🌍 EcoBuddy AI</h1>",
-    unsafe_allow_html=True
-)
-
-st.markdown(
-    "<p class='sub-title'>Your Intelligent Sustainability Assistant</p>",
-    unsafe_allow_html=True
-)
-
-st.divider()
-
-st.markdown("""
-<div class='feature-card'>
-
-### 🌱 What EcoBuddy AI Can Do
-
-✅ Carbon Footprint Calculator
-
-✅ Waste Segregation Assistant
-
-✅ Water Conservation Advisor
-
-✅ Energy Consumption Predictor
-
-✅ Eco-Friendly Product Recommendation
-
-✅ AI Sustainability Chatbot
-
-</div>
-""", unsafe_allow_html=True)
-
-st.success("👈 Select any module from the left sidebar.")
-
+pg.run()
